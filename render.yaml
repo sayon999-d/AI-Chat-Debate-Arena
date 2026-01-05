@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: ai-debate-arena
+    runtime: python
+    region: ohio
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: CHUTES_API_KEY
+        sync: false
+      - key: BYTEZ_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: https://ai-debate-arena.onrender.com/auth/google/callback
+      - key: ALLOWED_ORIGINS
+        value: https://ai-debate-arena.onrender.com
