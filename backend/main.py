@@ -20,7 +20,6 @@ import httpx
 
 load_dotenv()
 
-# Configuration
 MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", 150))
 MAX_QUERY_LENGTH = int(os.getenv("MAX_QUERY_LENGTH", 2000))
 RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", 30))
@@ -28,19 +27,16 @@ RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", 60))
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000").split(",")
 SESSION_EXPIRE_HOURS = 24
 
-# API Keys
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
 CHUTES_API_KEY = os.getenv("CHUTES_API_KEY", "").strip()
 BYTEZ_API_KEY = os.getenv("BYTEZ_API_KEY", "").strip()
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "").strip()
 
-# Google OAuth
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
 GOOGLE_REDIRECT_URI = "http://localhost:8000/auth/google/callback"
 
-# SDK imports
 try:
     from tavily import TavilyClient
     TAVILY_AVAILABLE = True
@@ -54,7 +50,6 @@ except ImportError as e:
     print(f"Bytez import failed: {e}")
     BYTEZ_AVAILABLE = False
 
-# Logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -62,7 +57,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# User storage (in-memory, would use DB in production)
 USERS_FILE = "users.json"
 users_db: Dict[str, Dict] = {}
 sessions: Dict[str, Dict] = {}
@@ -86,12 +80,9 @@ def save_users():
 import bcrypt
 
 def hash_password(password: str) -> str:
-    # Hash a password for the first time
-    # (Using bcrypt, the salt is saved into the hash itself)
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    # Check a password against a hash
     try:
         return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
     except Exception:
@@ -117,7 +108,6 @@ def validate_session(session_id: str) -> Optional[str]:
 
 load_users()
 
-# Security patterns
 DANGEROUS_PATTERNS = [r'<script[^>]*>', r'javascript:', r'on\w+\s*=', r'data:text/html']
 
 def sanitize_input(text: str) -> str:
@@ -132,7 +122,6 @@ def get_client_id(request: Request) -> str:
         return hashlib.sha256(forwarded.split(",")[0].strip().encode()).hexdigest()[:16]
     return hashlib.sha256((request.client.host if request.client else "unknown").encode()).hexdigest()[:16]
 
-# Provider config with optimized tokens
 PROVIDER_CONFIG = {
     "groq": {
         "base_url": "https://api.groq.com/openai/v1/chat/completions",
@@ -182,7 +171,6 @@ class RateLimiter:
     def is_allowed(self, client_id: str) -> bool:
         now = time.time()
         
-        # Check if blocked
         if client_id in self.blocked:
             if now < self.blocked[client_id]:
                 return False
@@ -329,7 +317,6 @@ class DebateClient:
                 return await self._call_bytez(question, config, start)
             
             client = await self.get_client()
-            # Optimized system prompt for fewer tokens
             messages = [
                 {"role": "system", "content": "Be concise. Max 100 words."},
                 {"role": "user", "content": question[:1500]}  # Limit input
@@ -390,7 +377,6 @@ class DebateClient:
             raise HTTPException(503, "No providers")
         
         if research_context:
-            # Optimized context injection
             enhanced = f"Context: {research_context[:800]}\n\nQ: {question}\n\nBe concise."
         else:
             enhanced = question
@@ -415,7 +401,6 @@ class DebateClient:
 
 debate_client = DebateClient()
 
-# Auth Models
 class LoginRequest(BaseModel):
     email: str = Field(..., min_length=3, max_length=100)
     password: str = Field(..., min_length=6, max_length=100)
@@ -425,7 +410,6 @@ class SignupRequest(BaseModel):
     email: str = Field(..., min_length=3, max_length=100)
     password: str = Field(..., min_length=6, max_length=100)
 
-# Login Page HTML
 LOGIN_HTML = '''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -679,7 +663,6 @@ LOGIN_HTML = '''<!DOCTYPE html>
 </html>
 '''
 
-# Signup Page HTML
 SIGNUP_HTML = '''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1285,10 +1268,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="AI Debate Arena", version="2.1.0", lifespan=lifespan, docs_url=None, redoc_url=None)
 
-# Security middleware
 @app.middleware("http")
 async def security_middleware(request: Request, call_next):
-    # Block suspicious user agents
     ua = request.headers.get("user-agent", "").lower()
     if any(bot in ua for bot in ["sqlmap", "nikto", "nmap", "masscan", "curl"]):
         logger.warning(f"Blocked suspicious request: {ua[:50]}")
@@ -1296,7 +1277,6 @@ async def security_middleware(request: Request, call_next):
     
     response = await call_next(request)
     
-    # Security headers
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
@@ -1307,7 +1287,6 @@ async def security_middleware(request: Request, call_next):
 
 app.add_middleware(CORSMiddleware, allow_origins=ALLOWED_ORIGINS, allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
 
-# Auth Routes
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     session_id = request.cookies.get("session_id")
@@ -1398,7 +1377,6 @@ async def api_me(request: Request):
         raise HTTPException(401, detail="Not authenticated")
     return {"email": user_id, "name": users_db[user_id]["name"]}
 
-# Google OAuth Routes
 @app.get("/auth/google")
 async def google_auth():
     if not GOOGLE_CLIENT_ID:
@@ -1424,7 +1402,6 @@ async def google_callback(request: Request, response: Response, code: str = None
     
     try:
         async with httpx.AsyncClient() as client:
-            # Exchange code for tokens
             token_response = await client.post(
                 "https://oauth2.googleapis.com/token",
                 data={
@@ -1443,7 +1420,6 @@ async def google_callback(request: Request, response: Response, code: str = None
             tokens = token_response.json()
             access_token = tokens.get("access_token")
             
-            # Get user info
             user_response = await client.get(
                 "https://www.googleapis.com/oauth2/v2/userinfo",
                 headers={"Authorization": f"Bearer {access_token}"}
@@ -1456,7 +1432,6 @@ async def google_callback(request: Request, response: Response, code: str = None
             email = user_info.get("email", "").lower()
             name = user_info.get("name", email.split("@")[0])
             
-            # Create or update user
             if email not in users_db:
                 users_db[email] = {
                     "name": name,
@@ -1467,7 +1442,6 @@ async def google_callback(request: Request, response: Response, code: str = None
                 save_users()
                 logger.info(f"New Google user: {email}")
             
-            # Create session
             session_id = create_session(email)
             redirect = RedirectResponse(url="/app", status_code=302)
             redirect.set_cookie(
@@ -1484,12 +1458,10 @@ async def google_callback(request: Request, response: Response, code: str = None
         logger.error(f"Google OAuth error: {e}")
         return RedirectResponse(url="/login?error=oauth_failed")
 
-# Helper Routes
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return Response(content=b"", media_type="image/x-icon")
 
-# API Routes
 @app.get("/health")
 async def health():
     return {"status": "ok", "version": "2.1.0", "providers": debate_client.get_available_providers(), "tavily": tavily_search.is_available()}
