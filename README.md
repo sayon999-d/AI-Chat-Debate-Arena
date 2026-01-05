@@ -22,56 +22,95 @@ A secure, multi-provider AI debate platform that orchestrates parallel responses
 - **AI Integration**: Custom provider adapters, Tavily Search API
 - **Live Deployment**: Render.com
 
-## Prerequisites
+## System Architecture
 
+The application uses an asynchronous, event-driven architecture to handle parallel AI interactions efficiently.
+
+```mermaid
+graph TD
+    Client[Client Browser] <-->|HTTP/WebSocket| API[FastAPI Backend]
+    API <-->|Auth| Security[Security Layer]
+    API <-->|Search| Tavily[Tavily Search API]
+    API <-->|Orchestrate| Manager[Debate Manager]
+    
+    subgraph Data Layer
+        Users[(Users JSON)]
+        Sessions[(Memory Store)]
+    end
+    
+    subgraph AI Providers
+        Manager <-->|Async| Groq[Groq]
+        Manager <-->|Async| OR[OpenRouter]
+        Manager <-->|Async| Chutes[Chutes]
+        Manager <-->|Async| Bytez[Bytez]
+    end
+    
+    Security --> Users
+    Security --> Sessions
+```
+
+### Core Components
+1.  **FastAPI Backend**: Handles HTTP requests, authentication, and routing.
+2.  **Debate Manager**: Asynchronously dispatches prompts to multiple AI providers and aggregates results.
+3.  **Security Layer**: Manages rate limiting, input sanitization, and session validation.
+4.  **Frontend**: Lightweight, embedded UI with real-time updates and dynamic visualizations.
+
+## How to Run Locally
+
+Follow these steps to get the project running on your local machine.
+
+### 1. Prerequisites
 - Python 3.11 or higher
-- pip package manager
-- API Keys for utilized providers (Groq, OpenRouter, etc.)
+- Git
+- An active internet connection
 
-## Installation
+### 2. Clone the Repository
+```bash
+git clone https://github.com/sayon999-d/AI-Chat-Debate-Arena.git
+cd AI-Chat-Debate-Arena
+```
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/sayon999-d/AI-Chat-Debate-Arena.git
-   cd AI-Chat-Debate-Arena
-   ```
+### 3. Environment Setup
+Create a virtual environment to isolate dependencies:
+```bash
+# MacOS/Linux
+python -m venv venv
+source venv/bin/activate
 
-2. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+# Windows
+python -m venv venv
+venv\Scripts\activate
+```
 
-3. Install dependencies:
-   ```bash
-   pip install -r backend/requirements.txt
-   ```
+### 4. Install Dependencies
+```bash
+pip install -r backend/requirements.txt
+```
 
-## Configuration
+### 5. Configuration
+Set up your environment variables:
+```bash
+# Copy the example file
+cp backend/.env.example backend/.env
 
-1. Copy the example environment file:
-   ```bash
-   cp backend/.env.example backend/.env
-   ```
+# Open .env and add your API keys
+# nano backend/.env
+```
+**Required Keys:** `GROQ_API_KEY`, `OPENROUTER_API_KEY`, etc.
+**Optional:** `GOOGLE_CLIENT_ID` (for Google Login).
 
-2. Edit `backend/.env` and populate your API keys:
-   - `GROQ_API_KEY`
-   - `OPENROUTER_API_KEY`
-   - `CHUTES_API_KEY`
-   - `BYTEZ_API_KEY`
-   - `TAVILY_API_KEY`
-   - `GOOGLE_CLIENT_ID` (Optional for OAuth)
-   - `GOOGLE_CLIENT_SECRET` (Optional for OAuth)
-
-## Usage
-
-Start the application server:
+### 6. Run the Application
 ```bash
 cd backend
 python main.py
 ```
+The server will start at `http://0.0.0.0:8000`.
 
-Access the application at `http://localhost:8000`.
+### 7. Access the App
+Open your browser and navigate to:
+**[http://localhost:8000](http://localhost:8000)**
+
+You will be redirected to the login page. You can create a new account or sign in.
 
 ## API Documentation
 
