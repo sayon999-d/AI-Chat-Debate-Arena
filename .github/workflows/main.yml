@@ -26,7 +26,5 @@ jobs:
                   pip install -r backend/requirements.txt
 
             - name: Run Tests
-              # We don't have tests yet, but this is placeholder for future
-              # Running a simple syntax check instead
               run: |
                   python -m compileall backend/
